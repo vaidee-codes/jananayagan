@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     xvfb \
     libxi6 \
-    libgconf-2-4 \
+    libxi6 \
     libappindicator3-1 \
     libasound2 \
     libatk-bridge2.0-0 \
@@ -26,7 +26,6 @@ RUN apt-get update && apt-get install -y \
     libxss1 \
     libxtst6 \
     fonts-liberation \
-    libappindicator1 \
     xdg-utils \
     && rm -rf /var/lib/apt/lists/*
 
