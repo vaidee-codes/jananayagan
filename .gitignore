@@ -35,3 +35,4 @@ jana_backup.py
 *.png
 *.html
 *.log
+local_config.py
