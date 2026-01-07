@@ -1,10 +1,10 @@
-from seleniumbase import Driver
-import time
-from datetime import datetime
 import requests
 import os
 import re
-import sys 
+import sys
+import time
+from datetime import datetime
+from seleniumbase import Driver
 from twilio.rest import Client
 
 # 1. Try Loading from Environment Variables (Railway)
@@ -27,12 +27,6 @@ try:
     print("✅ Loaded credentials from local_config.py")
 except ImportError:
     pass # No local config, relying on Env Vars 
-
-# 3. Sanitize Inputs (Remove accidental newlines/spaces)
-if TWILIO_SID: TWILIO_SID = TWILIO_SID.strip()
-if TWILIO_AUTH_TOKEN: TWILIO_AUTH_TOKEN = TWILIO_AUTH_TOKEN.strip()
-if TWILIO_FROM: TWILIO_FROM = TWILIO_FROM.strip()
-if MY_PHONE: MY_PHONE = MY_PHONE.strip()
 
 TARGET_DATE = "20260109" # Jan 9, 2026
 CHECK_INTERVAL = 180     # 3 minutes
@@ -84,16 +78,14 @@ def trigger_all_alerts(theaters_list):
 
 def monitor_cinemas():
     # UC=True is mandatory for BMS/District in 2026
-    driver = None
+    driver = Driver(uc=True, headless=True)
     try:
-        driver = Driver(uc=True, headless=True)
-        
         all_found = []
         for name, url in PLATFORMS.items():
             print(f"[{datetime.now().strftime('%H:%M:%S')}] Checking {name}...")
             driver.get(url)
             time.sleep(10) # Give time for JS to render
-            
+
             # Robust Text Scanning (Fixes CSS selector issues)
             try:
                 body_text = driver.find_element("tag name", "body").text
@@ -103,7 +95,7 @@ def monitor_cinemas():
 
             lines = body_text.splitlines()
             current_venue = None
-            
+
             # Regex for 6 AM - 7:59 AM patterns
             # Matches 6:30 AM, 06:45 AM, 7:00 AM, etc.
             time_pattern = re.compile(r'\b(0?6|0?7|0?8):\d{2}\s?AM') 
@@ -111,11 +103,11 @@ def monitor_cinemas():
             for line in lines:
                 line = line.strip().upper()
                 if not line: continue
-                
+
                 # 1. Identify Venue
                 if "PVR" in line or "INOX" in line:
                     current_venue = line
-                
+
                 # 2. Identify Morning Shows (6 AM - 8 AM)
                 elif current_venue and "AM" in line:
                     # Check if it matches our specific morning hours
@@ -127,26 +119,20 @@ def monitor_cinemas():
         print(f"⚠️ Scrape Error: {e}")
         return []
     finally:
-        if driver:
-            try:
-                driver.quit()
-            except:
-                pass
+        driver.quit()
 
 # ========= MAIN LOOP =========
 print(f"🔥 Watching PVR/INOX ONLY for Jan 9th (6AM-8AM)...")
 
 while True:
-    try:
-        matches = monitor_cinemas()
-        if matches:
-            trigger_all_alerts(matches)
-            print("✅ Success! Alerts triggered. Exiting to prevent spam loop.")
-            sys.exit() # Critical for phone calls - don't want to call 100 times in a row
-        else:
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] No PVR/INOX morning shows on {TARGET_DATE} yet.")
-    except Exception as e:
-        print(f"⚠️ Critical Error in Main Loop: {e}")
-        print("🔄 Retrying in a few minutes...")
-    
-    time.sleep(CHECK_INTERVAL)
+    matches = monitor_cinemas()
+    if matches:
+        trigger_all_alerts(matches)
+        print("✅ Success! Alerts triggered. Exiting to prevent spam loop.")
+        sys.exit() # Critical for phone calls - don't want to call 100 times in a row
+
+
+
+
+    else:
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] No PVR/INOX morning shows on {TARGET_DATE} yet.")
